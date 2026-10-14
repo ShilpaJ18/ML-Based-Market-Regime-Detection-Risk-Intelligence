@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Market Regime &amp; Risk Intelligence System</title>
+<meta name="description" content="ML-based market regime detection using K-Means and GMM with real-time risk analytics."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg2:#0d1117;--bg3:#161b27;--card:#1a2035;--card2:#1f2640;
+  --border:#2a3452;--border2:#3a4672;--text:#e8eaf6;--text2:#9aa5c4;--text3:#5a6480;
+  --accent:#3d8ef8;--accent2:#6c63ff;--green:#2dd4a0;--yellow:#f5c542;
+  --orange:#f4844a;--red:#f05f6e;
+  --r0:#2a9d8f;--r1:#8ab17d;--r2:#e9c46a;--r3:#f4a261;--r4:#e76f51;--r5:#b5179e;
+  --radius:14px;--radius-sm:8px;--shadow:0 8px 32px rgba(0,0,0,.45);
+  --glow:0 0 24px rgba(61,142,248,.18);--font:'Inter',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+#sidebar{position:fixed;left:0;top:0;height:100vh;width:272px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sidebar-logo{padding:22px 18px 14px;border-bottom:1px solid var(--border)}
+.sidebar-logo h2{font-size:1rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.3px}
+.sidebar-logo p{font-size:.7rem;color:var(--text3);margin-top:3px}
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0}
+.nav-section{padding:8px 16px 4px;font-size:.62rem;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;transition:all .18s;font-size:.86rem;color:var(--text2);border-left:3px solid transparent}
+.nav-item:hover{background:rgba(61,142,248,.07);color:var(--text)}
+.nav-item.active{background:rgba(61,142,248,.12);color:var(--accent);border-left-color:var(--accent);font-weight:600}
+.sidebar-controls{padding:14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.sidebar-status{padding:10px 14px;border-top:1px solid var(--border)}
+.status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
+.status-dot.ok{background:var(--green);box-shadow:0 0 5px var(--green)}
+.status-dot.err{background:var(--red)}
+#main{margin-left:272px;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 26px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:.98rem;font-weight:700;color:var(--text)}
+.topbar-meta{font-size:.72rem;color:var(--text3);display:flex;gap:14px}
+.content{padding:22px 26px;flex:1}
+.tabs{display:flex;gap:2px;background:var(--bg3);border-radius:var(--radius);padding:4px;margin-bottom:22px}
+.tab-btn{flex:1;padding:9px 6px;border:none;background:none;color:var(--text2);font-family:var(--font);font-size:.82rem;font-weight:500;border-radius:10px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.tab-btn:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.tab-btn.active{background:var(--card2);color:var(--text);font-weight:600;box-shadow:var(--shadow)}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeIn .22s ease}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.metric-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;transition:all .2s}
+.metric-card:hover{border-color:var(--border2);box-shadow:var(--glow)}
+.metric-label{font-size:.68rem;color:var(--text3);font-weight:500;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+.metric-value{font-size:1.45rem;font-weight:700;letter-spacing:-.5px}
+.metric-sub{font-size:.68rem;color:var(--text3);margin-top:3px}
+.metric-value.pos{color:var(--green)}.metric-value.neg{color:var(--red)}.metric-value.neu{color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card-title{font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+label{font-size:.76rem;color:var(--text2);font-weight:500;display:block;margin-bottom:4px}
+input[type=text],input[type=number],select{width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:var(--font);font-size:.83rem;outline:none;transition:border-color .18s}
+input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--accent)}
+select option{background:var(--bg3)}
+input[type=range]{width:100%;accent-color:var(--accent);margin:4px 0}
+.range-val{font-size:.78rem;color:var(--accent);font-weight:600}
+.form-row{margin-bottom:12px}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text2);cursor:pointer}
+input[type=checkbox]{accent-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border:none;border-radius:var(--radius-sm);font-family:var(--font);font-size:.83rem;font-weight:600;cursor:pointer;transition:all .18s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 14px rgba(61,142,248,.28)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(61,142,248,.4)}
+.btn-secondary{background:var(--card2);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--border2);color:var(--text)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-full{width:100%;justify-content:center}
+#progress-bar-wrap{display:none;position:fixed;top:0;left:272px;right:0;z-index:200;background:rgba(7,9,15,.93);backdrop-filter:blur(8px);padding:20px 28px;border-bottom:1px solid var(--border)}
+.progress-label{font-size:.83rem;color:var(--text2);margin-bottom:8px}
+.progress-track{width:100%;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width .4s ease;width:0%}
+.regime-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:600}
+.data-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.data-table th{padding:8px 11px;text-align:left;font-size:.67rem;font-weight:700;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.data-table td{padding:8px 11px;border-bottom:1px solid rgba(42,52,82,.45);color:var(--text2)}
+.data-table tr:hover td{background:rgba(255,255,255,.02);color:var(--text)}
+.data-table .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:500;color:var(--text)}
+.insight-item{background:rgba(61,142,248,.06);border:1px solid rgba(61,142,248,.15);border-radius:var(--radius-sm);padding:11px 14px;margin-bottom:9px;font-size:.81rem;color:var(--text2);line-height:1.65}
+.insight-item strong{color:var(--text);font-weight:600}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text3)}
+.empty-state .big-icon{font-size:3rem;margin-bottom:14px}
+.empty-state h3{font-size:1rem;color:var(--text2);margin-bottom:7px;font-weight:600}
+.empty-state p{font-size:.82rem;line-height:1.6}
+.alert{padding:9px 14px;border-radius:var(--radius-sm);font-size:.8rem;margin-bottom:11px;display:flex;align-items:flex-start;gap:8px}
+.alert-warning{background:rgba(245,197,66,.07);border:1px solid rgba(245,197,66,.22);color:#e0b830}
+.alert-info{background:rgba(61,142,248,.07);border:1px solid rgba(61,142,248,.18);color:var(--accent)}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <h2>&#x1F4C8; Market Regime &amp; Risk</h2>
+    <p>ML-Based Intelligence System</p>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Dashboards</div>
+    <div class="nav-item active" data-tab="overview">&#x1F4CA; Market Overview</div>
+    <div class="nav-item" data-tab="regimes">&#x1F9ED; Regime Detection</div>
+    <div class="nav-item" data-tab="risk">&#x26A0;&#xFE0F; Risk Intelligence</div>
+    <div class="nav-item" data-tab="eval">&#x1F9EA; Model Evaluation</div>
+    <div class="nav-section">Pipeline</div>
+    <div class="nav-item" data-tab="run">&#x2699;&#xFE0F; Configure &amp; Run</div>
+  </div>
+  <div class="sidebar-controls">
+    <div class="form-row">
+      <label>Active Ticker</label>
+      <select id="global-ticker"></select>
+    </div>
+    <div class="form-row">
+      <label>Regime Model</label>
+      <select id="global-model">
+        <option value="KMeans">K-Means</option>
+        <option value="GMM">Gaussian Mixture (GMM)</option>
+      </select>
+    </div>
+  </div>
+  <div class="sidebar-status">
+    <div style="font-size:.72rem;color:var(--text3)">
+      <span class="status-dot err" id="db-dot"></span><span id="db-msg">Checking DB...</span>
+    </div>
+    <div style="margin-top:5px;font-size:.68rem;color:var(--text3)" id="run-time-info"></div>
+  </div>
+</nav>
+
+<div id="progress-bar-wrap">
+  <div class="progress-label" id="progress-label">Initialising...</div>
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+</div>
+
+<div id="main">
+  <div class="topbar">
+    <div class="topbar-title">ML-Based Market Regime Detection &amp; Risk Intelligence</div>
+    <div class="topbar-meta">
+      <span id="topbar-range">No data</span>
+      <span id="topbar-k"></span>
+      <span id="topbar-run"></span>
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="disclaimer-bar" class="alert alert-info" style="display:none"></div>
+    <div id="warnings-bar"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overview">&#x1F4CA; Overview</button>
+      <button class="tab-btn" data-tab="regimes">&#x1F9ED; Regimes</button>
+      <button class="tab-btn" data-tab="risk">&#x26A0;&#xFE0F; Risk</button>
+      <button class="tab-btn" data-tab="eval">&#x1F9EA; Evaluation</button>
+      <button class="tab-btn" data-tab="run">&#x2699;&#xFE0F; Configure</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div id="tab-overview" class="tab-panel active">
+      <div class="metrics-grid" id="overview-metrics"></div>
+      <div class="card">
+        <div class="card-title">&#x1F4C8; Price Chart with Moving Averages</div>
+        <div id="chart-price"></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">&#x1F4C9; Cumulative Returns (All Tickers)</div>
+          <div id="chart-cumreturns"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">&#x1F501; RSI (14-day)</div>
+          <div id="chart-rsi"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#x1F517; Return Correlation Matrix</div>
+        <div id="chart-corr"></div>
+      </div>
+    </div>
+
+    <!-- REGIMES -->
+    <div id="tab-regimes" class="tab-panel">
+      <div class="card">
+        <div class="card-title">&#x1F3A8; Regime Timeline</div>
+        <div id="chart-regime-timeline"></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">&#x1F4CA; Regime Frequencies</div>
+          <div id="chart-regime-freq"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">&#x23F1;&#xFE0F; Episode Durations</div>
+          <div id="chart-regime-dur"></div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">&#x1F504; Transition Probabilities</div>
+          <div id="chart-transitions"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">&#x1F535; PCA Projection</div>
+          <div id="chart-pca"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#x1F4CB; Regime Statistics</div>
+        <div id="table-regime-stats"></div>
+      </div>
+    </div>
+
+    <!-- RISK -->
+    <div id="tab-risk" class="tab-panel">
+      <div class="metrics-grid" id="risk-metrics-grid"></div>
+      <div class="card">
+        <div class="card-title">&#x1F30A; Rolling Volatility (Annualised, 20-day window)</div>
+        <div id="chart-rolling-vol"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#x1F4C9; Drawdown</div>
+        <div id="chart-drawdown"></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">&#x26A1; VaR &amp; ES by Regime</div>
+          <div id="chart-var-regime"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">&#x1F525; High-Risk Periods</div>
+          <div id="table-high-risk"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#x1F3C6; Risk Summary — All Tickers</div>
+        <div id="table-risk-all"></div>
+      </div>
+    </div>
+
+    <!-- EVAL -->
+    <div id="tab-eval" class="tab-panel">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">&#x1F4D0; Silhouette Score (Train vs Test)</div>
+          <div id="chart-silhouette"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">&#x1F4CF; k-Selection Curve (Silhouette)</div>
+          <div id="chart-inertia"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#x1F4CB; Full Model Evaluation Table</div>
+        <div id="table-eval"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#x1F4A1; Data-Backed Insights</div>
+        <div id="insights-container"></div>
+      </div>
+    </div>
+
+    <!-- RUN -->
+    <div id="tab-run" class="tab-panel">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">&#x1F4E5; Download &amp; Rebuild</div>
+          <div class="form-row">
+            <label>Tickers (comma separated)</label>
+            <input type="text" id="run-tickers" value="NVDA, AAPL, MSFT, AMD, QQQ"/>
+          </div>
+          <div class="form-row">
+            <label>Years of history: <span class="range-val" id="lbl-years">5</span></label>
+            <input type="range" id="run-years" min="1" max="10" value="5" oninput="document.getElementById('lbl-years').textContent=this.value"/>
+          </div>
+          <div class="form-row">
+            <label>Number of regimes (k): <span class="range-val" id="lbl-k">3</span></label>
+            <input type="range" id="run-k" min="2" max="6" value="3" oninput="document.getElementById('lbl-k').textContent=this.value"/>
+          </div>
+          <div class="form-row">
+            <label>Training fraction: <span class="range-val" id="lbl-frac">70%</span></label>
+            <input type="range" id="run-frac" min="50" max="90" step="5" value="70" oninput="document.getElementById('lbl-frac').textContent=this.value+'%'"/>
+          </div>
+          <label class="checkbox-row" style="margin-bottom:14px">
+            <input type="checkbox" id="run-savedb"/> Save results to MySQL
+          </label>
+          <button class="btn btn-primary btn-full" id="btn-run">&#x1F504; Refresh Data (Download + Rebuild)</button>
+        </div>
+        <div class="card">
+          <div class="card-title">&#x1F9E0; Retrain Models</div>
+          <p style="font-size:.8rem;color:var(--text2);line-height:1.6;margin-bottom:14px">
+            Reuses already-downloaded prices. Change the number of regimes or training fraction
+            without re-downloading data.
+          </p>
+          <button class="btn btn-secondary btn-full" id="btn-retrain">&#x1F9E0; Retrain (Same Data)</button>
+          <div style="margin-top:18px" class="card-title">&#x1F5C4;&#xFE0F; MySQL Status</div>
+          <div id="db-panel-msg" style="font-size:.8rem;margin-bottom:12px;color:var(--text2)"></div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-secondary" id="btn-recheck-db">&#x1F504; Re-check</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="run-log-card" style="display:none">
+        <div class="card-title">&#x1F4DF; Pipeline Log</div>
+        <div id="run-log" style="font-size:.78rem;color:var(--text2);font-family:monospace;line-height:1.9;max-height:280px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const PALETTE=['#2a9d8f','#8ab17d','#e9c46a','#f4a261','#e76f51','#b5179e'];
+const PL={paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+  font:{family:'Inter,sans-serif',color:'#9aa5c4',size:11},
+  margin:{t:16,b:44,l:54,r:20},
+  xaxis:{gridcolor:'#1f2640',linecolor:'#2a3452',zerolinecolor:'#2a3452'},
+  yaxis:{gridcolor:'#1f2640',linecolor:'#2a3452',zerolinecolor:'#2a3452'},
+  legend:{bgcolor:'rgba(0,0,0,0)',font:{size:11}},
+  modebar:{bgcolor:'transparent',color:'#5a6480',activecolor:'#3d8ef8'}};
+const PC={displayModeBar:true,displaylogo:false,responsive:true,
+  modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d']};
+
+let state={result:false,ticker:null,model:'KMeans',tickers:[],meta:{}};
+
+const $=id=>document.getElementById(id);
+const fmt=(v,d=2)=>v==null?'--':(+v).toFixed(d);
+const pct=(v,d=1)=>v==null?'--':(+v*100).toFixed(d)+'%';
+const fd=d=>d?d.slice(0,10):'--';
+const rc=n=>{const m={Calm:PALETTE[0],'Very Calm':PALETTE[0],Moderate:PALETTE[2],Elevated:PALETTE[3],Turbulent:PALETTE[4],Extreme:PALETTE[5]};return m[n]||PALETTE[2]};
+const L=(x={})=>Object.assign({},PL,x);
+
+async function api(p){const r=await fetch(p);return r.json();}
+async function post(p,b){const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return r.json();}
+
+function empty(el,msg='No data yet — run the pipeline first'){
+  el.innerHTML=`<div class="empty-state"><div class="big-icon">&#x1F4ED;</div><h3>No Data</h3><p>${msg}</p></div>`;
+}
+
+function tbl(data,cols,fmts={}){
+  if(!data||!data.length) return '<p style="color:var(--text3);font-size:.8rem">No data.</p>';
+  const h=cols.map(c=>`<th>${c.l||c.k}</th>`).join('');
+  const rows=data.map(row=>{
+    const cells=cols.map(c=>{
+      const v=row[c.k],f=fmts[c.k];
+      const d=f?f(v,row):(v==null?'--':v);
+      return `<td class="${c.n?'num':''}">${d}</td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+  return `<div style="overflow-x:auto"><table class="data-table"><thead><tr>${h}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// NAV
+function setTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
+  if(state.result) render(name);
+}
+document.querySelectorAll('.tab-btn,.nav-item').forEach(el=>el.addEventListener('click',()=>setTab(el.dataset.tab)));
+
+// CONTROLS
+$('global-ticker').addEventListener('change',e=>{state.ticker=e.target.value;renderActive();});
+$('global-model').addEventListener('change',e=>{state.model=e.target.value;renderActive();});
+function renderActive(){const a=document.querySelector('.tab-panel.active');if(a&&state.result)render(a.id.replace('tab-',''));}
+
+function populateTickers(tickers){
+  const sel=$('global-ticker'),cur=sel.value||state.ticker;
+  sel.innerHTML=tickers.map(t=>`<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('');
+  state.ticker=sel.value;
+}
+
+// STATUS
+async function loadStatus(){
+  try{
+    const s=await api('/api/status');
+    $('db-dot').className='status-dot '+(s.db_ok?'ok':'err');
+    $('db-msg').textContent=s.db_msg;
+    $('db-panel-msg').textContent=(s.db_ok?'Connected: ':'Disconnected: ')+s.db_msg;
+    if(s.has_result){
+      const m=s.meta;
+      state.result=true;state.meta=m;state.tickers=m.tickers||[];
+      if(!state.ticker||!state.tickers.includes(state.ticker))state.ticker=state.tickers[0];
+      populateTickers(state.tickers);
+      $('topbar-range').textContent=fd(m.data_start)+' to '+fd(m.data_end);
+      $('topbar-k').textContent='k='+m.n_regimes;
+      $('topbar-run').textContent='Run: '+(m.run_time||'').slice(0,16);
+      $('run-time-info').textContent='Last: '+(m.run_time||'').slice(0,16);
+      $('disclaimer-bar').style.display='flex';
+      $('disclaimer-bar').textContent=s.disclaimer;
+      if(m.warnings&&m.warnings.length)
+        $('warnings-bar').innerHTML=m.warnings.map(w=>`<div class="alert alert-warning">&#x26A0; ${w}</div>`).join('');
+      renderActive();
+    } else {
+      $('topbar-range').textContent='No data loaded';
+      noData();
+    }
+  }catch(e){console.error(e)}
+}
+
+function noData(){
+  ['chart-price','chart-cumreturns','chart-rsi','chart-corr',
+   'chart-regime-timeline','chart-regime-freq','chart-regime-dur','chart-transitions','chart-pca',
+   'table-regime-stats','chart-rolling-vol','chart-drawdown','chart-var-regime',
+   'table-high-risk','table-risk-all','chart-silhouette','chart-inertia',
+   'table-eval','insights-container','overview-metrics','risk-metrics-grid'].forEach(id=>{
+    const el=$(id);if(el)empty(el);
+  });
+}
+
+// PIPELINE
+$('btn-run').addEventListener('click',async()=>{
+  const body={tickers:$('run-tickers').value,years:+$('run-years').value,
+    n_regimes:+$('run-k').value,train_frac:+$('run-frac').value/100,
+    save_db:$('run-savedb').checked,retrain:false};
+  const res=await post('/api/run',body);
+  if(res.ok)startPoll();else alert('Error: '+res.error);
+});
+$('btn-retrain').addEventListener('click',async()=>{
+  if(!state.result){alert('No data loaded.');return;}
+  const res=await post('/api/run',{n_regimes:+$('run-k').value,train_frac:+$('run-frac').value/100,retrain:true});
+  if(res.ok)startPoll();else alert('Error: '+res.error);
+});
+$('btn-recheck-db').addEventListener('click',loadStatus);
+
+let _poll=null;
+function startPoll(){
+  $('progress-bar-wrap').style.display='block';
+  $('run-log-card').style.display='block';
+  $('run-log').innerHTML='';
+  $('btn-run').disabled=true;$('btn-retrain').disabled=true;
+  if(_poll)clearInterval(_poll);
+  _poll=setInterval(async()=>{
+    const p=await api('/api/progress');
+    $('progress-label').textContent=p.msg||'Working...';
+    $('progress-fill').style.width=(p.frac*100)+'%';
+    $('run-log').innerHTML+=`<div>&rsaquo; ${p.msg} (${Math.round(p.frac*100)}%)</div>`;
+    if(!p.running){
+      clearInterval(_poll);$('btn-run').disabled=false;$('btn-retrain').disabled=false;
+      if(p.error){$('progress-label').textContent='Error: '+p.error;}
+      else{$('progress-label').textContent='Done!';setTimeout(()=>{$('progress-bar-wrap').style.display='none';},2500);await loadStatus();}
+    }
+  },1200);
+}
+
+// RENDER ROUTER
+function render(name){
+  if(!state.result)return;
+  if(name==='overview')renderOverview();
+  else if(name==='regimes')renderRegimes();
+  else if(name==='risk')renderRisk();
+  else if(name==='eval')renderEval();
+}
+
+// OVERVIEW
+async function renderOverview(){
+  const [prices,features,riskAll,corr]=await Promise.all([
+    api('/api/prices?ticker='+state.ticker),
+    api('/api/features?ticker='+state.ticker),
+    api('/api/risk_metrics'),
+    api('/api/correlation'),
+  ]);
+  const rm=riskAll.find(r=>r.ticker===state.ticker)||{};
+  $('overview-metrics').innerHTML=[
+    {l:'Cumul. Return',v:pct(rm.cumulative_return),c:rm.cumulative_return>=0?'pos':'neg'},
+    {l:'Ann. Return',v:pct(rm.annualized_return),c:rm.annualized_return>=0?'pos':'neg'},
+    {l:'Ann. Volatility',v:pct(rm.annualized_volatility),c:'neu'},
+    {l:'Max Drawdown',v:pct(rm.max_drawdown),c:'neg'},
+    {l:'VaR 95%',v:pct(rm.var_95),c:'neg'},
+    {l:'VaR 99%',v:pct(rm.var_99),c:'neg'},
+    {l:'ES 95%',v:pct(rm.es_95),c:'neg'},
+    {l:'Return/Risk',v:fmt(rm.return_to_risk),c:rm.return_to_risk>=0?'pos':'neg'},
+  ].map(m=>`<div class="metric-card"><div class="metric-label">${m.l}</div><div class="metric-value ${m.c}">${m.v}</div><div class="metric-sub">${state.ticker}</div></div>`).join('');
+
+  const dates=prices.map(r=>r.trade_date);
+  Plotly.react('chart-price',[
+    {type:'candlestick',x:dates,open:prices.map(r=>r.open),high:prices.map(r=>r.high),
+      low:prices.map(r=>r.low),close:prices.map(r=>r.close),name:state.ticker,
+      increasing:{line:{color:'#2dd4a0'},fillcolor:'rgba(45,212,160,.25)'},
+      decreasing:{line:{color:'#f05f6e'},fillcolor:'rgba(240,95,110,.25)'}},
+    {x:features.map(f=>f.trade_date),y:features.map(f=>f.ma_20),mode:'lines',name:'MA20',line:{color:'#f5c542',width:1.5}},
+    {x:features.map(f=>f.trade_date),y:features.map(f=>f.ma_50),mode:'lines',name:'MA50',line:{color:'#3d8ef8',width:1.5}},
+  ],L({height:350,xaxis:{rangeslider:{visible:false}}}),PC);
+
+  const allP=await api('/api/prices');
+  const tix=[...new Set(allP.map(r=>r.ticker))];
+  Plotly.react('chart-cumreturns',tix.map((t,i)=>{
+    const px=allP.filter(r=>r.ticker===t).sort((a,b)=>a.trade_date>b.trade_date?1:-1);
+    const c=px.map(r=>r.close);
+    return {x:px.map(r=>r.trade_date),y:c.map((v,j)=>j===0?0:v/c[0]-1),
+      mode:'lines',name:t,line:{width:2,color:PALETTE[i%PALETTE.length]}};
+  }),L({height:270,yaxis:{tickformat:'.0%'}}),PC);
+
+  const fd2=features.map(f=>f.trade_date),rs=features.map(f=>f.rsi_14);
+  Plotly.react('chart-rsi',[
+    {x:fd2,y:rs,mode:'lines',name:'RSI 14',line:{color:'#6c63ff',width:2}},
+    {x:[fd2[0],fd2[fd2.length-1]],y:[70,70],mode:'lines',name:'OB',line:{color:'#f05f6e',width:1,dash:'dot'}},
+    {x:[fd2[0],fd2[fd2.length-1]],y:[30,30],mode:'lines',name:'OS',line:{color:'#2dd4a0',width:1,dash:'dot'}},
+  ],L({height:270,yaxis:{range:[0,100]}}),PC);
+
+  Plotly.react('chart-corr',[{type:'heatmap',z:corr.matrix,x:corr.tickers,y:corr.tickers,
+    colorscale:[[0,'#e76f51'],[0.5,'#1a2035'],[1,'#2a9d8f']],zmin:-1,zmax:1,
+    text:corr.matrix.map(row=>row.map(v=>v!=null?v.toFixed(2):'')),texttemplate:'%{text}',showscale:true}],
+  L({height:270}),PC);
+}
+
+// REGIMES
+async function renderRegimes(){
+  const [regimes,prices,durs,trans,pca,stats]=await Promise.all([
+    api('/api/regimes?ticker='+state.ticker+'&model='+state.model),
+    api('/api/prices?ticker='+state.ticker),
+    api('/api/regime_durations?ticker='+state.ticker+'&model='+state.model),
+    api('/api/regime_transitions?ticker='+state.ticker+'&model='+state.model),
+    api('/api/pca?ticker='+state.ticker+'&model='+state.model),
+    api('/api/regime_stats?ticker='+state.ticker+'&model='+state.model),
+  ]);
+  const rnames=[...new Set(regimes.map(r=>r.regime_name))].sort();
+  const pm={};prices.forEach(p=>pm[p.trade_date]=p.close);
+  const te=regimes.find(r=>r.dataset_split==='test');
+  const shapes=te?[{type:'line',x0:te.trade_date,x1:te.trade_date,y0:0,y1:1,xref:'x',yref:'paper',line:{color:'#f5c542',width:1.5,dash:'dash'}}]:[];
+  Plotly.react('chart-regime-timeline',[
+    {x:prices.map(p=>p.trade_date),y:prices.map(p=>p.close),mode:'lines',name:'Price',line:{color:'rgba(255,255,255,.15)',width:1},showlegend:false},
+    ...rnames.map(n=>{const pts=regimes.filter(r=>r.regime_name===n);return{x:pts.map(r=>r.trade_date),y:pts.map(r=>pm[r.trade_date]),mode:'markers',name:n,marker:{size:4,color:rc(n)}};})
+  ],L({height:330,xaxis:{rangeslider:{visible:false}},shapes}),PC);
+
+  const fq=rnames.map(n=>({n,c:regimes.filter(r=>r.regime_name===n).length}));
+  Plotly.react('chart-regime-freq',[{type:'pie',labels:fq.map(f=>f.n),values:fq.map(f=>f.c),
+    marker:{colors:rnames.map(rc)},hole:.45,textinfo:'label+percent',textfont:{size:11}}],
+  L({height:270,margin:{t:16,b:20,l:20,r:20}}),PC);
+
+  Plotly.react('chart-regime-dur',[{type:'bar',x:durs.map(d=>d.regime_name),y:durs.map(d=>d.mean_duration),
+    marker:{color:durs.map(d=>rc(d.regime_name))},name:'Mean Days'}],
+  L({height:270,yaxis:{title:'Days'}}),PC);
+
+  const fn=[...new Set(trans.map(t=>t.from_regime_name))].sort();
+  const tn=[...new Set(trans.map(t=>t.to_regime_name))].sort();
+  const zm=fn.map(fr=>tn.map(to=>{const c=trans.find(t=>t.from_regime_name===fr&&t.to_regime_name===to);return c?c.probability:0;}));
+  Plotly.react('chart-transitions',[{type:'heatmap',z:zm,x:tn,y:fn,
+    colorscale:[[0,'#07090f'],[0.5,'#3d8ef8'],[1,'#6c63ff']],
+    text:zm.map(row=>row.map(v=>v.toFixed(2))),texttemplate:'%{text}',showscale:true}],
+  L({height:270}),PC);
+
+  const pn=[...new Set(pca.points.map(p=>p.regime_name))];
+  Plotly.react('chart-pca',pn.map(n=>{const pts=pca.points.filter(p=>p.regime_name===n);
+    return{type:'scatter',mode:'markers',name:n,x:pts.map(p=>p.pc1),y:pts.map(p=>p.pc2),
+      marker:{size:4,color:rc(n),opacity:.72}};}),
+  L({height:270,xaxis:{title:'PC1 ('+pct(pca.variance.pc1)+' var)'},yaxis:{title:'PC2 ('+pct(pca.variance.pc2)+' var)'}}),PC);
+
+  $('table-regime-stats').innerHTML=tbl(stats,[
+    {k:'regime_name',l:'Regime'},{k:'n_days',l:'Days',n:1},{k:'frequency',l:'Freq',n:1},
+    {k:'mean_daily_return',l:'Avg Ret',n:1},{k:'mean_volatility_20d',l:'Avg Vol',n:1},{k:'mean_rsi_14',l:'Avg RSI',n:1},
+  ],{regime_name:v=>`<span class="regime-badge" style="background:${rc(v)}22;color:${rc(v)}">${v}</span>`,
+    frequency:v=>pct(v),mean_daily_return:v=>pct(v,3),mean_volatility_20d:v=>pct(v,1),mean_rsi_14:v=>fmt(v,1)});
+}
+
+// RISK
+async function renderRisk(){
+  const [roll,riskAll,regR,hiR]=await Promise.all([
+    api('/api/rolling_risk?ticker='+state.ticker),
+    api('/api/risk_metrics'),
+    api('/api/regime_risk?ticker='+state.ticker+'&model='+state.model),
+    api('/api/high_risk?ticker='+state.ticker),
+  ]);
+  const rm=riskAll.find(r=>r.ticker===state.ticker)||{};
+  $('risk-metrics-grid').innerHTML=[
+    {l:'Max Drawdown',v:pct(rm.max_drawdown),c:'neg'},{l:'VaR 95%',v:pct(rm.var_95),c:'neg'},
+    {l:'VaR 99%',v:pct(rm.var_99),c:'neg'},{l:'ES 95%',v:pct(rm.es_95),c:'neg'},
+    {l:'ES 99%',v:pct(rm.es_99),c:'neg'},{l:'Best Day',v:pct(rm.best_day),c:'pos'},
+    {l:'Worst Day',v:pct(rm.worst_day),c:'neg'},{l:'Trading Days',v:rm.n_days||'--',c:'neu'},
+  ].map(m=>`<div class="metric-card"><div class="metric-label">${m.l}</div><div class="metric-value ${m.c}">${m.v}</div><div class="metric-sub">${state.ticker}</div></div>`).join('');
+
+  Plotly.react('chart-rolling-vol',[{x:roll.map(r=>r.date),y:roll.map(r=>r.rolling_vol),
+    mode:'lines',fill:'tozeroy',fillcolor:'rgba(61,142,248,.08)',line:{color:'#3d8ef8',width:2},name:'Ann. Vol'}],
+  L({height:270,yaxis:{tickformat:'.0%'}}),PC);
+
+  Plotly.react('chart-drawdown',[{x:roll.map(r=>r.date),y:roll.map(r=>r.drawdown),
+    mode:'lines',fill:'tozeroy',fillcolor:'rgba(240,95,110,.1)',line:{color:'#f05f6e',width:2},name:'Drawdown'}],
+  L({height:270,yaxis:{tickformat:'.1%'}}),PC);
+
+  Plotly.react('chart-var-regime',[
+    {type:'bar',x:regR.map(r=>r.regime_name),y:regR.map(r=>r.var_95),name:'VaR 95%',marker:{color:regR.map(r=>rc(r.regime_name))}},
+    {type:'bar',x:regR.map(r=>r.regime_name),y:regR.map(r=>r.es_95),name:'ES 95%',marker:{color:regR.map(r=>rc(r.regime_name)),opacity:.6}},
+  ],L({height:270,barmode:'group',yaxis:{tickformat:'.1%'}}),PC);
+
+  $('table-high-risk').innerHTML=hiR.length?tbl(hiR,[
+    {k:'period_start',l:'Start'},{k:'period_end',l:'End'},
+    {k:'n_days',l:'Days',n:1},{k:'peak_volatility',l:'Peak Vol',n:1},
+    {k:'period_return',l:'Return',n:1},{k:'worst_day',l:'Worst Day',n:1},
+  ],{period_start:v=>fd(v),period_end:v=>fd(v),peak_volatility:v=>pct(v,1),period_return:v=>pct(v,1),worst_day:v=>pct(v,2)})
+  :'<p style="color:var(--text3);font-size:.8rem">No high-risk periods detected.</p>';
+
+  $('table-risk-all').innerHTML=tbl(riskAll,[
+    {k:'ticker',l:'Ticker'},{k:'n_days',l:'Days',n:1},
+    {k:'cumulative_return',l:'Cum. Ret',n:1},{k:'annualized_return',l:'Ann. Ret',n:1},
+    {k:'annualized_volatility',l:'Ann. Vol',n:1},{k:'max_drawdown',l:'Max DD',n:1},
+    {k:'var_95',l:'VaR 95%',n:1},{k:'es_95',l:'ES 95%',n:1},{k:'return_to_risk',l:'Ret/Risk',n:1},
+  ],{cumulative_return:v=>pct(v,1),annualized_return:v=>pct(v,1),annualized_volatility:v=>pct(v,1),
+    max_drawdown:v=>pct(v,1),var_95:v=>pct(v,2),es_95:v=>pct(v,2),return_to_risk:v=>fmt(v,2)});
+}
+
+// EVAL
+async function renderEval(){
+  const [ev,sel,ins]=await Promise.all([
+    api('/api/model_eval'),
+    api('/api/model_selection?ticker='+state.ticker),
+    api('/api/insights?model='+state.model),
+  ]);
+  const mc={'KMeans':'#3d8ef8','GMM':'#6c63ff'};
+  Plotly.react('chart-silhouette',['KMeans','GMM'].flatMap(m=>{
+    const rows=ev.filter(e=>e.model_name===m);
+    return[
+      {type:'scatter',mode:'markers',name:m+' Train',x:rows.map(r=>r.ticker),y:rows.map(r=>r.silhouette_train),marker:{size:11,color:mc[m]}},
+      {type:'scatter',mode:'markers',name:m+' Test',x:rows.map(r=>r.ticker),y:rows.map(r=>r.silhouette_test),marker:{size:11,color:mc[m],symbol:'x'}},
+    ];
+  }),L({height:270,yaxis:{title:'Silhouette'}}),PC);
+
+  Plotly.react('chart-inertia',['KMeans','GMM'].map(m=>{
+    const rows=sel.filter(s=>s.model_name===m).sort((a,b)=>a.n_clusters-b.n_clusters);
+    return{x:rows.map(r=>r.n_clusters),y:rows.map(r=>r.silhouette_train),mode:'lines+markers',name:m,
+      line:{color:mc[m],width:2},marker:{size:7,color:mc[m]}};
+  }),L({height:270,xaxis:{title:'k',dtick:1},yaxis:{title:'Silhouette (Train)'}}),PC);
+
+  $('table-eval').innerHTML=tbl(ev,[
+    {k:'ticker',l:'Ticker'},{k:'model_name',l:'Model'},{k:'n_clusters',l:'k',n:1},
+    {k:'train_rows',l:'Train',n:1},{k:'silhouette_train',l:'Sil.Train',n:1},
+    {k:'silhouette_test',l:'Sil.Test',n:1},{k:'stability_ari_mean',l:'ARI',n:1},{k:'train_test_tv_distance',l:'TV Dist',n:1},
+  ],{silhouette_train:v=>fmt(v,3),silhouette_test:v=>fmt(v,3),stability_ari_mean:v=>fmt(v,3),train_test_tv_distance:v=>fmt(v,3)});
+
+  $('insights-container').innerHTML=ins.length
+    ?ins.map(i=>`<div class="insight-item">${i.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</div>`).join('')
+    :'<p style="color:var(--text3);font-size:.8rem">No insights available.</p>';
+}
+
+loadStatus();
+</script>
+</body>
+</html>

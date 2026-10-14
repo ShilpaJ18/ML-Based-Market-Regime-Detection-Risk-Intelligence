@@ -1,0 +1,12 @@
+.env
+*.env
+venv/
+env/
+__pycache__/
+*.pyc
+data/raw/*.csv
+data/processed/*.pkl
+*.pkl
+.ipynb_checkpoints/
+.vscode/
+.idea/
